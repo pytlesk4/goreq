@@ -244,8 +244,8 @@ var DefaultDialer = &net.Dialer{Timeout: 1000 * time.Millisecond}
 var DefaultTransport http.RoundTripper = &http.Transport{Dial: DefaultDialer.Dial, Proxy: http.ProxyFromEnvironment}
 var DefaultClient = &http.Client{Transport: DefaultTransport}
 
-var proxyTransport http.RoundTripper
-var proxyClient *http.Client
+var ProxyTransport http.RoundTripper
+var ProxyClient *http.Client
 
 func SetConnectTimeout(duration time.Duration) {
 	DefaultDialer.Timeout = duration
@@ -298,14 +298,18 @@ func (r Request) Do() (*Response, error) {
 		}
 
 		//If jar is specified new client needs to be built
-		if proxyTransport == nil || client.Jar != nil {
-			proxyTransport = &http.Transport{Dial: DefaultDialer.Dial, Proxy: http.ProxyURL(proxyUrl)}
-			proxyClient = &http.Client{Transport: proxyTransport, Jar: client.Jar}
-		} else if proxyTransport, ok := proxyTransport.(*http.Transport); ok {
-			proxyTransport.Proxy = http.ProxyURL(proxyUrl)
+		if ProxyTransport == nil {
+			ProxyTransport = &http.Transport{Dial: DefaultDialer.Dial, Proxy: http.ProxyURL(proxyUrl)}
+		} else if ProxyTransport, ok := ProxyTransport.(*http.Transport); ok {
+			ProxyTransport.Proxy = http.ProxyURL(proxyUrl)
 		}
-		transport = proxyTransport
-		client = proxyClient
+
+		if client.Jar != nil {
+			ProxyClient = &http.Client{Transport: ProxyTransport, Jar: client.Jar}
+		}
+
+		transport = ProxyTransport
+		client = ProxyClient
 	}
 
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
