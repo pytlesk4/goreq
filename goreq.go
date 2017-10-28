@@ -275,7 +275,9 @@ func (r Request) WithCookie(c *http.Cookie) Request {
 
 func (r Request) Do() (*Response, error) {
 	var client = DefaultClient
+	var proxy = ProxyClient
 	var transport = DefaultTransport
+	var proxyTransport = ProxyTransport
 	var resUri string
 	var redirectFailed bool
 
@@ -298,18 +300,18 @@ func (r Request) Do() (*Response, error) {
 		}
 
 		//If jar is specified new client needs to be built
-		if ProxyTransport == nil {
-			ProxyTransport = &http.Transport{Dial: DefaultDialer.Dial, Proxy: http.ProxyURL(proxyUrl)}
-		} else if ProxyTransport, ok := ProxyTransport.(*http.Transport); ok {
-			ProxyTransport.Proxy = http.ProxyURL(proxyUrl)
+		if proxyTransport == nil {
+			proxyTransport = &http.Transport{Dial: DefaultDialer.Dial, Proxy: http.ProxyURL(proxyUrl)}
+		} else if pt, ok := proxyTransport.(*http.Transport); ok {
+			pt.Proxy = http.ProxyURL(proxyUrl)
 		}
 
 		if client.Jar != nil {
-			ProxyClient = &http.Client{Transport: ProxyTransport, Jar: client.Jar}
+			proxy = &http.Client{Transport: proxyTransport, Jar: client.Jar}
 		}
 
-		transport = ProxyTransport
-		client = ProxyClient
+		transport = proxyTransport
+		client = proxy
 	}
 
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
